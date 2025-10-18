@@ -14,8 +14,8 @@ var conexion = mysql.createConnection({
     host:"localhost",
     port:"3306",
     user:"root",
-    password:"1984",
-    database:"imple",
+    password:"H0nduras",
+    database:"marina_mercante",
     authPlugins: {
 
         mysql_native_password: () => () => Buffer.from('1984')
@@ -68,7 +68,6 @@ app.listen(49146, () => {
         logger.info("Conexión a la BD con éxito!");
     });
 });
-
 
 //Comprobando la conexion con un JS
 app.get('/api/json', (solicitud, respuesta) => {
