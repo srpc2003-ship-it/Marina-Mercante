@@ -8,7 +8,8 @@ const Register = () => {
     apellido: '',
     nombre_usuario: '',
     correo: '',
-    contraseña: ''
+    contraseña: '',
+    id_cargo: ''
   });
 
   const handleChange = (e) => {
@@ -22,7 +23,7 @@ const Register = () => {
     e.preventDefault();
     try {
       console.log('Registrando usuario:', formData);
-      const response = await axios.post('/api/usuario', formData);
+      const response = await axios.post('http://localhost:49146', formData);
       console.log('Registro exitoso:', response.data);
       alert('¡Registro exitoso! Revisa tu correo para el código QR');
     } catch (error) {
@@ -97,6 +98,19 @@ const Register = () => {
             className="input-field"
           />
         </div>
+
+        <div className="form-group">
+            <label htmlFor="id_cargo">ID Cargo</label>
+            <input
+              type="number"
+              id="id_cargo"
+              name="id_cargo"
+              value={formData.id_cargo}
+              onChange={handleChange}
+              placeholder="Ej: 1 para admin, 2 para usuario..."
+              required
+            />
+          </div>
         
         <button type="submit" className="register-button">Registrarse</button>
         

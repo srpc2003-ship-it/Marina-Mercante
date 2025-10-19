@@ -5,7 +5,8 @@ import './Login.css';
 const Login = ({ onShowRegister }) => {
   const [formData, setFormData] = useState({
     nombre_usuario: '',
-    contraseña: ''
+    contraseña: '',
+    id_cargo: ''
   });
 
   const handleChange = (e) => {
@@ -19,7 +20,7 @@ const Login = ({ onShowRegister }) => {
     e.preventDefault();
     try {
       console.log('Enviando datos:', formData);
-      const response = await axios.post('/api/login', formData);
+      const response = await axios.post('http://localhost:49146', formData);
       console.log('Login exitoso:', response.data);
       alert('¡Login exitoso!');
     } catch (error) {
@@ -59,6 +60,18 @@ const Login = ({ onShowRegister }) => {
             className="input-field"
           />
         </div>
+        <div className="form-group">
+            <label htmlFor="id_cargo">ID Cargo</label>
+            <input
+              type="number"
+              id="id_cargo"
+              name="id_cargo"
+              value={formData.id_cargo}
+              onChange={handleChange}
+              placeholder="Ej: 1, 2, 3..."
+              required
+            />
+          </div>
         
         <button type="submit" className="submit-button">Ingresar</button>
         
