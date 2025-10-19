@@ -58,6 +58,7 @@ app.use(cookieParser());
 //Definicion del Listener
 
 const logger = require("./logger"); // Importar logger
+const query = "SELECT * FROM tbl_usuario WHERE nombre = ? AND contraseña = ?";
 
 app.listen(49146, () => {
     conexion.connect((err) => {
@@ -108,30 +109,35 @@ app.get("/api/seguro", verificarToken, (req, res) => {
 // Ruta para iniciar sesión y generar el token
 app.post("/api/login", (req, res) => {
     console.log("Ruta /api/login llamada");
-    const { nombre_usuario, contraseña } = req.body;
+    const { nombre, contraseña } = req.body;
 
-    // Verifica las credenciales del usuario en la base de datos
-    const query = "SELECT * FROM tlb_usuario WHERE nombre_usuario = ? AND contraseña = ?";
-    conexion.query(query, [nombre_usuario, contraseña], (err, rows) => {
-        if (err) {
-            return handleDatabaseError(err, res, "Error en inicio de sesión:");
+    const query = "SELECT * FROM tbl_usuario WHERE nombre = ? AND contraseña = ?";
+    conexion.query(query, [nombre, contraseña], (err, rows) => {
+        if (err) return handleDatabaseError(err, res, "Error en inicio de sesión:");
+
+        if (rows.length === 0) {
+            return res.status(401).json({ mensaje: "Credenciales inválidas" });
         }
 
-        // Verificar si se encontraron filas (credenciales válidas)
-        const credencialesValidas = rows.length > 0;
+        const usuario = rows[0];
+        const token = jwt.sign(
+            { id_usuario: usuario.id_usuario, nombre: usuario.nombre },
+            SECRET_KEY,
+            { expiresIn: "1h" }
+        );
 
-        if (credencialesValidas) {
-            const usuario = rows[0];
+        // Enviar token en cookie y en respuesta
+        res.cookie("token", token, {
+            httpOnly: true,   // No accesible por JavaScript
+            secure: false,    // Cambia a true en HTTPS
+            sameSite: "lax",
+            maxAge: 3600000   // 1 hora
+        });
 
-            // Genera el token JWT
-            const token = jwt.sign({ id_usuario: usuario.id_usuario }, SECRET_KEY, { expiresIn: "1h" });
-
-            // Envía el token en una cookie
-            res.cookie("token", token, { httpOnly: false, secure: false }); // Ajusta 'secure' en producción
-            res.json({ mensaje: "Inicio de sesión exitoso", token: token });
-        } else {
-            res.status(401).json({ mensaje: "Credenciales inválidas" });
-        }
+        res.json({
+            mensaje: "Inicio de sesión exitoso",
+            token
+        });
     });
 });
 
@@ -206,7 +212,7 @@ app.post("/api/verificar-usuario", (req, res) => {
 
 //Get listado de usuarios
 app.get('/api/usuario', (request, response) => {
-    var query = "SELECT * FROM tlb_usuario";
+    var query = "SELECT * FROM imple.tbl_usuario";
 
     conexion.query(query, (err, rows) => {
         if (err) {
@@ -220,10 +226,10 @@ app.get('/api/usuario', (request, response) => {
             sameSite: 'lax' 
         });
         response.json(rows);
-        registrarBitacora("usuario", "GET", request.body); // Registra la petición en la bitácora
         logger.info("Listado de usuarios - OK");
     });
 });
+
 
 
 
@@ -253,7 +259,6 @@ app.get('/api/usuario/:id', (request, response) => {
             handleDatabaseError(err, res, "Error en listado de usuarios con where:");
             return;
         }
-        registrarBitacora("usuario", "GET", request.body); // Registra la petición en la bitácora
         logger.info("Listado de usuarios con where - OK");
         response.json(rows);
     });
@@ -261,50 +266,48 @@ app.get('/api/usuario/:id', (request, response) => {
 
 //Post insert de usuarios
 
-app.post('/api/usuario', (request, response) => {
-    // Verificar si el campo 'nombre' está presente en la solicitud
-    const query = "INSERT INTO imple.tbl_usuario (nombre, apellido, nombre_usuario, correo, contraseña, secreto_google_auth) VALUES (?, ?, ?, ?, ?, ?)";
-    const values = [request.body.nombre, request.body.apellido, request.body.nombre_usuario, request.body.correo, request.body.contraseña, secreto.base32];
-    const secreto = speakeasy.generateSecret({ length: 20 });
+app.post('/api/usuario', (req, res) => {
+    
+    // Extraer datos del cuerpo de la solicitud
+    const { id_cargo, nombre, correo, contraseña } = req.body;
 
-    conexion.query(query, values, (err) => {
+    // Verificar que todos los campos obligatorios estén presentes
+    if (!id_cargo ||!nombre || !correo || !contraseña) {
+        return res.status(400).json({ error: "Faltan campos obligatorios." });
+    }
+
+    // Consulta SQL
+    const query = `
+        INSERT INTO imple.tbl_usuario (id_cargo, nombre, correo, contraseña)
+        VALUES (?, ?, ?, ?)
+    `;
+    const values = [id_cargo, nombre,  correo, contraseña];
+
+    // Ejecutar la inserción
+    conexion.query(query, values, (err, result) => {
         if (err) {
-            // Manejar el error de la base de datos
-            return response.status(500).json({ error: "Error en la base de datos." });
+            console.error("Error en la base de datos:", err);
+            return res.status(500).json({ error: "Error en la base de datos." });
         }
 
-        // Generar el código QR para el secreto
-        QRCode.toDataURL(secreto.otpauth_url, (err, url) => {
-            if (err) {
-                return response.status(500).json({ error: "Error al generar el código QR." });
-            }
-
-            // Mostrar el código QR al usuario
-            response.json({ secreto: secreto.base32, qr_code: url });
-
-        });
-
-        registrarBitacora("usuario", "INSERT", request.body);
-            logger.info("INSERT de usuarios - OK");
-            console.log("Secreto:", secreto.base32);
-            response.json("INSERT EXITOSO!");
+       logger.info("INSERT de usuario - OK");
+       console.log("Usuario agregado:", nombre);
     });
-
 });
+
 
 
 
 //Put Update de usuarios
 
 app.put('/api/usuario', (request, response) => {
-    const query = "UPDATE imple.tbl_usuario SET nombre = ?, apellido = ?, correo = ?, nombre_usuario = ? WHERE id_usuario = ?";
-    const values = [request.body.nombre, request.body.apellido, request.body.correo, request.body.nombre_usuario, request.body.id_usuario];
+    const query = "UPDATE imple.tbl_usuario SET id_cargo=?, nombre = ?, correo = ? = ? WHERE id_usuario = ?";
+    const values = [request.body.id_cargo, request.body.nombre, request.body.correo, request.body.id_usuario];
     conexion.query(query, values, (err) => {
         if (err) {
             handleDatabaseError(err, response, "Error en actualización de usuario:");
             return;
         }
-        registrarBitacora("usuario", "UPDATE", request.body);
         logger.info("ACTUALIZACIÓN de usuarios - OK");
         response.json("UPDATE EXITOSO!");
     });
@@ -320,7 +323,6 @@ app.delete('/api/usuario/:id', (request, response) => {
             handleDatabaseError(err, res, "Error en eliminación de usuario:");
             return;
         }
-        registrarBitacora("usuario", "DELETE", request.body);
         logger.info("DELETE de usuarios - OK");
         response.json("DELETE EXITOSO!");
     });
