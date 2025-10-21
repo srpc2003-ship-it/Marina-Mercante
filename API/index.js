@@ -14,7 +14,7 @@ var conexion = mysql.createConnection({
     host:"localhost",
     port:"3306",
     user:"root",
-    password:"H0nduras",
+    password:"123456",
     database:"marina_mercante",
     authPlugins: {
 
@@ -196,7 +196,7 @@ app.post("/api/recuperar-contrasena", async (req, res) => {
 app.post("/api/verificar-usuario", (req, res) => {
     const { nombre_usuario } = req.body;
 
-    const query = "SELECT * FROM imple.tbl_usuario WHERE nombre = ?";
+    const query = "SELECT * FROM tbl_usuario WHERE nombre = ?";
     conexion.query(query, [nombre_usuario], (err, rows) => {
         if (err) {
             return res.status(500).json({ mensaje: "Error al verificar el usuario" });
@@ -212,7 +212,7 @@ app.post("/api/verificar-usuario", (req, res) => {
 
 //Get listado de usuarios
 app.get('/api/usuario', (request, response) => {
-    var query = "SELECT * FROM imple.tbl_usuario";
+    var query = "SELECT * FROM tbl_usuario";
 
     conexion.query(query, (err, rows) => {
         if (err) {
@@ -252,7 +252,7 @@ app.get("/api/cookie", (req, res) => {
 
 app.get('/api/usuario/:id', (request, response) => {
     console.log(request.params);
-    const query = "SELECT * FROM imple.tbl_usuario WHERE id_usuario = ?";
+    const query = "SELECT * FROM tbl_usuario WHERE id_usuario = ?";
     const values = [parseInt(request.params.id)];
     conexion.query(query, values, (err, rows) => {
         if (err) {
@@ -278,7 +278,7 @@ app.post('/api/usuario', (req, res) => {
 
     // Consulta SQL
     const query = `
-        INSERT INTO imple.tbl_usuario (id_cargo, nombre, correo, contraseña)
+        INSERT INTO tbl_usuario (id_cargo, nombre, correo, contraseña)
         VALUES (?, ?, ?, ?)
     `;
     const values = [id_cargo, nombre,  correo, contraseña];
@@ -301,7 +301,7 @@ app.post('/api/usuario', (req, res) => {
 //Put Update de usuarios
 
 app.put('/api/usuario', (request, response) => {
-    const query = "UPDATE imple.tbl_usuario SET id_cargo=?, nombre = ?, correo = ? = ? WHERE id_usuario = ?";
+    const query = "UPDATE tbl_usuario SET id_cargo=?, nombre = ?, correo = ? = ? WHERE id_usuario = ?";
     const values = [request.body.id_cargo, request.body.nombre, request.body.correo, request.body.id_usuario];
     conexion.query(query, values, (err) => {
         if (err) {
@@ -316,7 +316,7 @@ app.put('/api/usuario', (request, response) => {
 //Delete de usuarios
 
 app.delete('/api/usuario/:id', (request, response) => {
-    const query = "DELETE FROM imple.tbl_usuario WHERE id_usuario = ?";
+    const query = "DELETE FROM tbl_usuario WHERE id_usuario = ?";
     const values = [parseInt(req.params.id)];
     conexion.query(query, values, (err) => {
         if (err) {
